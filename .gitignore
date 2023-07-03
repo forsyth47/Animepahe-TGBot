@@ -5,3 +5,7 @@ poetry.lock
 pyproject.toml
 replit.nix
 tests.py
+__pycache__
+.config
+data
+log.txt
