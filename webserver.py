@@ -7,8 +7,11 @@ app = Flask('')
 
 @app.route('/')
 def home():
-
-  return "I'm alive"
+  fline = ""
+  with open ('log.txt','r') as f:
+    for line in f.readlines():
+      fline += line + "<br>"
+  return fline
 
 
 def run():
