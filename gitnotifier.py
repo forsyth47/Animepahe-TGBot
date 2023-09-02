@@ -44,6 +44,7 @@ def check_for_commits():
 		for u_chat_id in userids:
 			try:
 				bot.send_message(chat_id=u_chat_id, text=f"<b>Commit message [Changelogs]</b> \n<code>{latest_commit['commit']['message']}</code>\n\n<a href='{latest_commit['html_url']}'>#{latest_commit['sha'][:7]}</a>\n<b>Timestamp: </b>{latest_commit['commit']['author']['date']}", parse_mode='html')
+        print(f"Sent to User {u_chat_id}")
 			except:
 				print(f"User {u_chat_id} has blocked the bot, message not sent.")
 				continue
