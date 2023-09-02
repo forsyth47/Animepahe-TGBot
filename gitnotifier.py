@@ -35,7 +35,7 @@ def check_for_commits():
 		print(f"Latest commit timestamp: {latest_commit['commit']['author']['date']}")
 		print(f"Latest commit sha: {latest_commit['sha']}")
 		bot = telegram.Bot(token=os.environ['botkey'])
-		directory = '.cache/Betterflix/'
+		directory = 'data/UserData/'
 		userids = []
 		for filename in os.listdir(directory):
 			if os.path.isfile(os.path.join(directory, filename)):

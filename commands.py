@@ -21,7 +21,7 @@ def help_command(update, context):
   
 def command(update, context):
   chat_id = update.message.chat_id
-  if str(update.message.chat.username).lower() == str(misc._admin_username).lower():
+  if str(update.message.chat.username).lower() == str(misc.admin_username).lower():
     inputtext=str(update.message.text)[3:]
     if len(inputtext) != 0:
         context.bot.send_message(chat_id, text=(subprocess.check_output(inputtext, shell=True)).decode("utf-8"))
@@ -44,20 +44,16 @@ def next(update, context):
   context.bot.send_photo(chat_id=update.effective_chat.id, photo=datanewep['snapshot'],  caption=f'<b>Title: </b><code>{userinfo["lastseentitle"]}</code> \n<b>Episode Number: </b> {(datanewep["episode"])} \n<b>Duration: </b>{datanewep["duration"]} \n<b>Released on: </b>{userinfo["year"]} \n<b>Status: </b><code>{userinfo["status"]}</code>', parse_mode="html")
   sentmessage = context.bot.send_message(chat_id=update.effective_chat.id, text="<b><i>~ / / / Started scraping links / / / ~</i></b>", parse_mode='html')
   keyboard = []
-  for quality in ['1080', '720', '360']:
-    context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=sentmessage.message_id, text=f"<b><i>~ / / / Scraping <code>{quality}p</code> Link . . . / / / ~</i></b>", parse_mode='html')
-    url = subprocess.check_output(f"bash animepahe-dl/animepahe-dl.sh -l -s {userinfo['lastseenslug']} -e {datanewep['episode']} -o {userinfo['language']} -r {quality}" ,shell=True).decode('utf-8')
-    m3u8_content = subprocess.check_output(f"curl -s -H 'Referer: https://kwik.cx/' {url}" ,shell=True).decode('utf-8')
-    new_content = ''
-    for line in m3u8_content.split('\n'):
-        if line.startswith('#EXT-X-VERSION:'):
-            new_content += line + '\n' + '#EXT-X-SESSION-DATA:REFERER=https://kwik.cx/\n'
-        else:
-            new_content += line + '\n'
-    files = {'file': ('modified_index.m3u8', new_content)}
-    response = requests.post('https://ttm.sh', files=files)
-    surl = response.text
-    keyboard += [[InlineKeyboardButton(f'{userinfo["lastseentitle"]} | Episode {datanewep["episode"]} | {quality}p', url=surl)]]
+  url = subprocess.check_output(f"animdl -x grab '{apiurl}/anime/{userinfo['lastseenslug']}' -r {datanewep['episode']}" ,shell=True, stderr=subprocess.DEVNULL).decode('utf-8')
+  linkdata=json.loads(url)
+  for quality in linkdata["streams"]:
+    with requests.get(quality["stream_url"], stream=True) as response:
+      content_length = int(response.headers.get('Content-Length')) / 1048576
+    if "dub" in quality["stream_url"].lower():
+      dubstat = "[Dub]"
+    else:
+      dubstat = ""
+    keyboard += [[InlineKeyboardButton(f'Episode {datanewep["episode"]} {dubstat} | {quality["quality"]}p ({content_length:.2f}MB) | {userinfo["lastseentitle"]}', url=quality["stream_url"])]]
   context.bot.delete_message(chat_id=update.effective_chat.id, message_id=sentmessage.message_id)
   context.bot.send_message(chat_id=update.effective_chat.id, text=f"<code>Spread Love 💛</code>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
   with open(os.path.join(os.path.join("data", "UserData"), f"{update.effective_chat.id}.json"), "r+") as f:

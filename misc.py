@@ -4,7 +4,7 @@ import json
 from telegram import *
 from telegram.ext import *
 
-_admin_username = 'joshuaforsyth'
+admin_username = 'joshuaforsyth'
 apiurl = 'https://animepahe.ru'
 botkey = os.environ['botkey']
 

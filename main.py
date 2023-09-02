@@ -27,13 +27,13 @@ def query(update, context):
     fileout.write(f"{logs}\n")
 
 def episodequery(update, context, xpage=1):
-  global eresponse, ufid, equeryreturn, equrl, zpage
+  global eresponse, ufid, equeryreturn, equrl, zpage, ephotoreturn
   zpage = xpage
   ufid = inspect.stack()[0][3]
   chatid = update.effective_chat.id
   equrl = f"{apiurl}/api?m=release&id={selectedanime['session']}&sort=episode_asc&page={zpage}"
   eresponse = requests.get(equrl).json()
-  context.bot.send_photo(chatid, selectedanime["poster"], caption=f'<b>Title: </b><code>{selectedanime["title"]}</code> \n<b>Total Episodes: </b> {(selectedanime["episodes"])} \n<b>Data type: </b>{selectedanime["type"]} \n<b>Released on: </b>{selectedanime["year"]} \n<b>Status: </b><code>{selectedanime["status"]}</code> \n<b>Rating: </b>{selectedanime["score"]}\n<b>URL: </b><a href="{apiurl}/anime/{selectedanime["session"]}">{selectedanime["title"]}</a>', parse_mode="html")
+  ephotoreturn=context.bot.send_photo(chatid, selectedanime["poster"], caption=f'<b>Title: </b><code>{selectedanime["title"]}</code> \n<b>Total Episodes: </b> {(selectedanime["episodes"])} \n<b>Data type: </b>{selectedanime["type"]} \n<b>Released on: </b>{selectedanime["year"]} \n<b>Status: </b><code>{selectedanime["status"]}</code> \n<b>Rating: </b>{selectedanime["score"]}\n<b>URL: </b><a href="{apiurl}/anime/{selectedanime["session"]}">{selectedanime["title"]}</a>', parse_mode="html")
   keyboard = [[InlineKeyboardButton(f"{' '*25}[{i + 1}] • E{episode['episode']}{' '*25}", callback_data=f"{i + 1}")] for i, episode in enumerate(eresponse['data'])] + [[InlineKeyboardButton("> EXIT", callback_data="exit")]]
   if eresponse['next_page_url'] != None:
     keyboard += [[InlineKeyboardButton("~ / / Next / / ~", callback_data="888")]]
@@ -42,27 +42,23 @@ def episodequery(update, context, xpage=1):
   equeryreturn = context.bot.send_message(chatid, text="<b><i>Select episode: </i></b>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
 
 def wrappup(update, context):
+  sentmessage = context.bot.send_message(chat_id=update.effective_chat.id, text="<b><i>~ / / / Started scraping links / / / ~</i></b>", parse_mode='html')
   quotejson=requests.get('https://zenquotes.io/api/random').json()
   quotecontent = quotejson[0]['q'] 
   quoteauthor = quotejson[0]['a']
-  sentmessage = context.bot.send_message(chat_id=update.effective_chat.id, text="<b><i>~ / / / Started scraping links / / / ~</i></b>", parse_mode='html')
-  with open(os.path.join("data", "UserData", f"{update.effective_chat.id}.json"), "r") as f:
-      userinfo=json.load(f)
+  # with open(os.path.join("data", "UserData", f"{update.effective_chat.id}.json"), "r") as f:
+  #     userinfo=json.load(f)
   keyboard = []
-  for quality in ['1080', '720', '360']:
-    context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=sentmessage.message_id, text=f"<b><i>~ / / / Scraping <code>{quality}p</code> Link . . . / / / ~</i></b>", parse_mode='html')
-    url = subprocess.check_output(f"bash animepahe-dl/animepahe-dl.sh -l -s {selectedanime['session']} -e {selectedepisode['episode']} -o {userinfo['language']} -r {quality}" ,shell=True).decode('utf-8')
-    m3u8_content = subprocess.check_output(f"curl -s -H 'Referer: https://kwik.cx/' {url}" ,shell=True).decode('utf-8')
-    new_content = ''
-    for line in m3u8_content.split('\n'):
-        if line.startswith('#EXT-X-VERSION:'):
-            new_content += line + '\n' + '#EXT-X-SESSION-DATA:REFERER=https://kwik.cx/\n'
-        else:
-            new_content += line + '\n'
-    files = {'file': ('modified_index.m3u8', new_content)}
-    response = requests.post('https://ttm.sh', files=files)
-    surl = response.text
-    keyboard += [[InlineKeyboardButton(f'Episode {selectedepisode["episode"]} | {quality}p | {selectedanime["title"]}', url=surl)]]
+  linkdata = subprocess.check_output(f"animdl -x grab '{apiurl}/anime/{selectedanime['session']}' -r {selectedepisode['episode']}" ,shell=True, stderr=subprocess.DEVNULL).decode('utf-8')
+  linkdata=json.loads(linkdata)
+  for quality in linkdata["streams"]:
+    with requests.get(quality["stream_url"], stream=True) as response:
+      content_length = int(response.headers.get('Content-Length')) / 1048576 
+    if "dub" in quality["stream_url"].lower():
+      dubstat = "[Dub]"
+    else:
+      dubstat = ""
+    keyboard += [[InlineKeyboardButton(f'Episode {selectedepisode["episode"]} {dubstat} | {quality["quality"]}p ({content_length:.2f}MB) | {selectedanime["title"]}', url=quality["stream_url"])]]
   context.bot.delete_message(chat_id=update.effective_chat.id, message_id=sentmessage.message_id)
   context.bot.send_message(chat_id=update.effective_chat.id, text=f"<b>{quotecontent}</b>\n~<code>{quoteauthor}</code>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='html')
   with open(os.path.join(os.path.join("data", "UserData"), f"{chatid}.json"), "r+") as f:
@@ -105,11 +101,13 @@ def Button(update, context):
     if buttoncallback == 888:
         zpage += 1
         query.answer()
+        context.bot.delete_message(chat_id=update.effective_chat.id, message_id=ephotoreturn.message_id)
         context.bot.delete_message(chat_id=update.effective_chat.id, message_id=equeryreturn.message_id)
         episodequery(update, context, zpage)
     elif buttoncallback == 999:
         zpage -= 1
         query.answer()
+        context.bot.delete_message(chat_id=update.effective_chat.id, message_id=ephotoreturn.message_id)
         context.bot.delete_message(chat_id=update.effective_chat.id, message_id=equeryreturn.message_id)
         episodequery(update, context, zpage)
     else:
@@ -123,7 +121,10 @@ def Button(update, context):
 
 # Log errors
 def error(update, context):
-  print ((datetime.now(pytz.timezone("Asia/Kolkata"))).strftime("[%d/%m/%Y %H:%M:%S] "), f'Update {update} caused error {context.error}')
+  errorlog = (datetime.now(pytz.timezone("Asia/Kolkata"))).strftime("[%d/%m/%Y %H:%M:%S] "), f'Update {update} caused error {context.error}'
+  with open("error.txt", "a+") as fileout:
+    fileout.write(f"{errorlog}\n\n{'-'*20}\n\n")
+  print(errorlog)
 
 
 
