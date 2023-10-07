@@ -4,7 +4,6 @@
 # https://github.com/TerminalWarlord/
 
 from fastapi import FastAPI
-from main import *
 import uvicorn
 from flask import *
 import requests
