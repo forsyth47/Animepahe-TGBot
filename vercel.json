@@ -1,8 +1,8 @@
 {
   "builds": [
-    { "src": "*.py", "use": "@vercel/python" }
+    {"src": "*py", "use": "@vercel/python"}
   ],
   "routes": [
-    { "src": "/animepahe.mp4", "dest": "/webserver.py" }
+    {"src": "/(.*)", "dest": "webapp.py"}
   ]
 }
